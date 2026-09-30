@@ -1,0 +1,44 @@
+# Runtime data (local database, uploads, renders, generated documents)
+data/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+backend/.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo
+next-env.d.ts
+
+# Evals (results are local; baselines are committed)
+backend/evals/results/*
+!backend/evals/results/.gitkeep
+
+# Third-party reference collection (read-only, not app code)
+awesome-design-md/
+
+# Logs & OS/editor files
+*.log
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

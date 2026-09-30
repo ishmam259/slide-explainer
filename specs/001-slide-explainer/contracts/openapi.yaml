@@ -1,0 +1,876 @@
+openapi: 3.1.0
+info:
+  title: Slide Explainer API
+  version: 0.1.0
+  description: |
+    Local API served by the Python backend on 127.0.0.1:8000 and proxied by Next.js at /api.
+    Contract source of truth for feature 001-slide-explainer. The FastAPI app's generated
+    /openapi.json MUST stay compatible with this file (contract tests enforce paths, methods,
+    status codes, and schema names). Field-level semantics are defined in ../data-model.md.
+servers:
+  - url: http://127.0.0.1:8000
+
+tags:
+  - name: system
+  - name: decks
+  - name: slides
+  - name: research
+  - name: sources
+  - name: documents
+  - name: runs
+  - name: qa
+  - name: quiz
+
+paths:
+  /health:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Environment readiness (API key, GPU path, LibreOffice, Chromium)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /files/{file_hash}:
+    get:
+      tags: [system]
+      operationId: getFile
+      summary: Stored file by content hash (slide renders, figures, uploads)
+      parameters:
+        - { name: file_hash, in: path, required: true, schema: { type: string, pattern: "^[a-f0-9]{64}$" } }
+      responses:
+        "200": { description: File bytes, content: { "*/*": { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /decks:
+    get:
+      tags: [decks]
+      operationId: listDecks
+      responses:
+        "200":
+          description: Decks, newest first
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/DeckSummary" } }
+    post:
+      tags: [decks]
+      operationId: createDeck
+      summary: Upload a deck (one PPTX or PDF, or 1–300 images in order) and optional context. Starts extraction.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  minItems: 1
+                  maxItems: 300
+                  items: { type: string, format: binary }
+                context:
+                  description: JSON-encoded DeckContext
+                  type: string
+      responses:
+        "201":
+          description: Created; extraction run started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeckDetail" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "413": { $ref: "#/components/responses/Problem" }
+        "415": { $ref: "#/components/responses/Problem" }
+
+  /decks/{deck_id}:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [decks]
+      operationId: getDeck
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DeckDetail" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      tags: [decks]
+      operationId: updateDeck
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, minLength: 1, maxLength: 200 }
+                context: { $ref: "#/components/schemas/DeckContext" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DeckDetail" } } } }
+        "422": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [decks]
+      operationId: deleteDeck
+      summary: Delete a deck and its derived data (shared sources are kept)
+      responses:
+        "204": { description: Deleted }
+
+  /decks/{deck_id}/order:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    put:
+      tags: [decks]
+      operationId: reorderImageSlides
+      summary: Reorder slides of an image deck (only before research)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order]
+              properties:
+                order: { type: array, items: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DeckDetail" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /decks/{deck_id}/events:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [runs]
+      operationId: streamDeckEvents
+      summary: Server-Sent Events for progress on this deck
+      description: |
+        Event names: run.started, run.stage, run.progress, run.paused, run.completed, run.failed,
+        slide.updated, topic.updated, source.updated, document.updated, cost.updated.
+        Each `data` payload is a JSON-encoded DeckEvent.
+      responses:
+        "200":
+          description: Event stream
+          content:
+            text/event-stream:
+              schema: { $ref: "#/components/schemas/DeckEvent" }
+
+  /decks/{deck_id}/slides:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [slides]
+      operationId: listSlides
+      responses:
+        "200":
+          description: Slides in order
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Slide" } }
+
+  /decks/{deck_id}/slides/{number}:
+    parameters:
+      - { $ref: "#/components/parameters/DeckId" }
+      - { name: number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      tags: [slides]
+      operationId: getSlide
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Slide" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /decks/{deck_id}/slides/{number}/hint:
+    parameters:
+      - { $ref: "#/components/parameters/DeckId" }
+      - { name: number, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    put:
+      tags: [slides]
+      operationId: setSlideHint
+      summary: Provide a one-line hint for a vague slide; re-runs its interpretation (FR-008)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hint]
+              properties:
+                hint: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        "200": { description: Re-interpreted slide, content: { application/json: { schema: { $ref: "#/components/schemas/Slide" } } } }
+
+  /decks/{deck_id}/estimate:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [research]
+      operationId: getEstimate
+      summary: Cost/time estimate for the next stage (FR-009)
+      parameters:
+        - name: stage
+          in: query
+          required: true
+          schema: { type: string, enum: [research, process_sources, generate] }
+        - name: organization
+          in: query
+          schema: { $ref: "#/components/schemas/Organization" }
+        - name: formats
+          in: query
+          style: form
+          explode: false
+          schema: { type: array, items: { $ref: "#/components/schemas/Format" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RunEstimate" } } } }
+
+  /decks/{deck_id}/topics:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [research]
+      operationId: listTopics
+      responses:
+        "200":
+          description: Topics found in the deck
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Topic" } }
+
+  /decks/{deck_id}/research:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    post:
+      tags: [research]
+      operationId: startResearch
+      summary: Confirm the estimate and start research (resumes the paused graph)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm: { type: boolean, const: true }
+                topic_ids:
+                  description: Subset of topics to research; default all
+                  type: array
+                  items: { type: string }
+      responses:
+        "202": { description: Research run started, content: { application/json: { schema: { $ref: "#/components/schemas/Run" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /decks/{deck_id}/sources:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [sources]
+      operationId: listDeckSources
+      responses:
+        "200": { description: Ranked sources per topic, content: { application/json: { schema: { $ref: "#/components/schemas/SourceList" } } } }
+    post:
+      tags: [sources]
+      operationId: addDeckSource
+      summary: Add a learner book PDF or URL (FR-013)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+                url: { type: string, format: uri }
+                topic_ids: { type: string, description: JSON-encoded list of topic ids }
+      responses:
+        "201": { description: Added, content: { application/json: { schema: { $ref: "#/components/schemas/DeckSource" } } } }
+        "400": { $ref: "#/components/responses/Problem" }
+
+  /decks/{deck_id}/sources/{source_id}:
+    parameters:
+      - { $ref: "#/components/parameters/DeckId" }
+      - { name: source_id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [sources]
+      operationId: updateDeckSource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approved]
+              properties:
+                approved: { type: boolean }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DeckSource" } } } }
+
+  /decks/{deck_id}/sources/approve:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    post:
+      tags: [sources]
+      operationId: approveSources
+      summary: Approve the current source list and process books/pages (resumes graph)
+      responses:
+        "202": { description: Processing run started, content: { application/json: { schema: { $ref: "#/components/schemas/Run" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /decks/{deck_id}/disagreements:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [sources]
+      operationId: listDisagreements
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Disagreement" } }
+
+  /decks/{deck_id}/documents:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [documents]
+      operationId: listDocuments
+      responses:
+        "200":
+          description: Generated documents, newest first
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ExplanationDocument" } }
+    post:
+      tags: [documents]
+      operationId: createDocument
+      summary: Generate an explanation document (FR-018)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization, formats]
+              properties:
+                organization: { $ref: "#/components/schemas/Organization" }
+                formats:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items: { $ref: "#/components/schemas/Format" }
+                slide_range:
+                  type: array
+                  items: { type: integer, minimum: 1 }
+                  minItems: 2
+                  maxItems: 2
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { $ref: "#/components/schemas/ExplanationDocument" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /documents/{document_id}:
+    parameters: [{ name: document_id, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [documents]
+      operationId: getDocument
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ExplanationDocument" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /documents/{document_id}/download/{format}:
+    parameters:
+      - { name: document_id, in: path, required: true, schema: { type: string } }
+      - { name: format, in: path, required: true, schema: { $ref: "#/components/schemas/Format" } }
+    get:
+      tags: [documents]
+      operationId: downloadDocument
+      summary: Download a rendered file (md is a .zip with images)
+      responses:
+        "200":
+          description: File
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document: { schema: { type: string, format: binary } }
+            text/html: { schema: { type: string } }
+            application/zip: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /runs/{run_id}:
+    parameters: [{ name: run_id, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [runs]
+      operationId: getRun
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Run" } } } }
+
+  /runs/{run_id}/resume:
+    parameters: [{ name: run_id, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [runs]
+      operationId: resumeRun
+      summary: Resume a failed or interrupted run from its last checkpoint (FR-030)
+      responses:
+        "202": { description: Resumed, content: { application/json: { schema: { $ref: "#/components/schemas/Run" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /runs/{run_id}/cancel:
+    parameters: [{ name: run_id, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [runs]
+      operationId: cancelRun
+      responses:
+        "202": { description: Cancelling, content: { application/json: { schema: { $ref: "#/components/schemas/Run" } } } }
+
+  /decks/{deck_id}/qa:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    post:
+      tags: [qa]
+      operationId: askQuestion
+      summary: Ask about the deck; streams the answer (FR-027)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string, minLength: 1, maxLength: 2000 }
+                thread_id: { type: string }
+      responses:
+        "200":
+          description: |
+            SSE stream: `answer.delta` ({text}), then `answer.done` (QaTurn), or `answer.declined` (QaTurn with declined=true).
+          content:
+            text/event-stream:
+              schema: { $ref: "#/components/schemas/QaTurn" }
+
+  /decks/{deck_id}/qa/threads/{thread_id}:
+    parameters:
+      - { $ref: "#/components/parameters/DeckId" }
+      - { name: thread_id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [qa]
+      operationId: getQaThread
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, turns]
+                properties:
+                  id: { type: string }
+                  turns: { type: array, items: { $ref: "#/components/schemas/QaTurn" } }
+
+  /decks/{deck_id}/quizzes:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    post:
+      tags: [quiz]
+      operationId: createQuiz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slide_from, slide_to]
+              properties:
+                slide_from: { type: integer, minimum: 1 }
+                slide_to: { type: integer, minimum: 1 }
+                count: { type: integer, minimum: 1, maximum: 20, default: 5 }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/QuizState" } } } }
+
+  /quizzes/{quiz_id}:
+    parameters: [{ name: quiz_id, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [quiz]
+      operationId: getQuiz
+      responses:
+        "200": { description: Current state (resume point), content: { application/json: { schema: { $ref: "#/components/schemas/QuizState" } } } }
+
+  /quizzes/{quiz_id}/answer:
+    parameters: [{ name: quiz_id, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [quiz]
+      operationId: answerQuiz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answer]
+              properties:
+                answer: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        "200": { description: Feedback, content: { application/json: { schema: { $ref: "#/components/schemas/QuizFeedback" } } } }
+
+  /quizzes/{quiz_id}/reveal:
+    parameters: [{ name: quiz_id, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [quiz]
+      operationId: revealQuizAnswer
+      summary: Learner explicitly asks for the answer to the current question
+      responses:
+        "200": { description: Revealed, content: { application/json: { schema: { $ref: "#/components/schemas/QuizFeedback" } } } }
+
+components:
+  parameters:
+    DeckId:
+      name: deck_id
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    Problem:
+      description: Error (RFC 9457 problem details)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code:
+          type: string
+          enum:
+            - unsupported_file
+            - corrupt_file
+            - too_many_slides
+            - file_too_large
+            - not_found
+            - invalid_state
+            - api_key_missing
+            - api_key_invalid
+            - model_not_allowed
+            - provider_unavailable
+            - rate_limited
+            - search_unavailable
+            - source_unavailable
+            - libreoffice_missing
+            - renderer_missing
+            - validation_error
+
+    Health:
+      type: object
+      required: [status, api_key_configured, ocr_path, libreoffice, renderer, models]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        api_key_configured: { type: boolean }
+        ocr_path: { type: string, enum: [local_gpu, provider] }
+        gpu_name: { type: [string, "null"] }
+        libreoffice: { type: boolean }
+        renderer: { type: boolean, description: Chromium available for PDF/formula rendering }
+        models:
+          type: object
+          additionalProperties: { type: string }
+          description: role → model id
+
+    DeckContext:
+      type: object
+      properties:
+        course: { type: string, maxLength: 200 }
+        level: { type: string, enum: [intro, intermediate, advanced, graduate] }
+        topic: { type: string, maxLength: 200 }
+        notes: { type: string, maxLength: 2000 }
+
+    DeckStatus:
+      type: string
+      enum:
+        - uploaded
+        - extracting
+        - awaiting_input
+        - ready_for_research
+        - awaiting_research_confirm
+        - researching
+        - awaiting_source_approval
+        - processing_sources
+        - ready
+        - generating
+        - failed
+
+    DeckSummary:
+      type: object
+      required: [id, title, file_kind, slide_count, status, created_at]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        file_kind: { type: string, enum: [pptx, pdf, images] }
+        slide_count: { type: integer }
+        status: { $ref: "#/components/schemas/DeckStatus" }
+        created_at: { type: string, format: date-time }
+
+    DeckDetail:
+      allOf:
+        - $ref: "#/components/schemas/DeckSummary"
+        - type: object
+          required: [context, clarity_counts, needs_input_count, cost_usd]
+          properties:
+            context: { $ref: "#/components/schemas/DeckContext" }
+            clarity_counts:
+              type: object
+              required: [clear, vague, unreadable, divider]
+              properties:
+                clear: { type: integer }
+                vague: { type: integer }
+                unreadable: { type: integer }
+                divider: { type: integer }
+            needs_input_count: { type: integer }
+            active_run: { oneOf: [{ $ref: "#/components/schemas/Run" }, { type: "null" }] }
+            cost_usd: { type: number }
+            error: { $ref: "#/components/schemas/Problem" }
+
+    Visual:
+      type: object
+      required: [id, origin, kind, image_url, explanation]
+      properties:
+        id: { type: string }
+        origin: { type: string, enum: [slide, book] }
+        kind: { type: string, enum: [diagram, chart, photo, screenshot, code, other] }
+        image_url: { type: string }
+        caption: { type: [string, "null"] }
+        description: { type: string }
+        explanation: { type: string }
+        unreadable_parts: { type: [string, "null"] }
+        page_label: { type: [string, "null"] }
+
+    Slide:
+      type: object
+      required: [number, image_url, clarity, needs_input, ocr_path]
+      properties:
+        number: { type: integer }
+        image_url: { type: string }
+        title: { type: [string, "null"] }
+        text: { type: string }
+        notes: { type: string }
+        formulas: { type: array, items: { type: object, required: [latex, unreadable], properties: { latex: { type: string }, unreadable: { type: boolean } } } }
+        visuals: { type: array, items: { $ref: "#/components/schemas/Visual" } }
+        topic: { type: [string, "null"] }
+        concepts: { type: array, items: { type: string } }
+        clarity: { type: string, enum: [pending, clear, vague, unreadable, divider] }
+        interpretation:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [meaning, confidence, rationale]
+              properties:
+                meaning: { type: string }
+                confidence: { type: number, minimum: 0, maximum: 1 }
+                rationale: { type: string }
+        needs_input: { type: boolean }
+        learner_hint: { type: [string, "null"] }
+        unreadable_regions: { type: array, items: { type: string } }
+        ocr_path: { type: string, enum: [native, local_ocr, provider_vision] }
+
+    Topic:
+      type: object
+      required: [id, name, slide_numbers, research_status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slide_numbers: { type: array, items: { type: integer } }
+        research_status: { type: string, enum: [pending, searching, done, no_reliable_source] }
+
+    Source:
+      type: object
+      required: [id, kind, origin, title, access]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [book, documentation, paper, lecture_notes, article, encyclopedia, other] }
+        origin: { type: string, enum: [web, learner_file, learner_url, open_library] }
+        title: { type: string }
+        authors: { type: array, items: { type: string } }
+        publisher: { type: [string, "null"] }
+        year: { type: [integer, "null"] }
+        url: { type: [string, "null"] }
+        isbn: { type: [string, "null"] }
+        access: { type: string, enum: [usable, further_reading, blocked] }
+        blocked_reason: { type: [string, "null"] }
+        processing_status: { type: string, enum: [pending, fetching, processing, ready, failed] }
+        page_count: { type: [integer, "null"] }
+
+    DeckSource:
+      type: object
+      required: [source, topic_ids, relevance, authority, reason, added_by, approved]
+      properties:
+        source: { $ref: "#/components/schemas/Source" }
+        topic_ids: { type: array, items: { type: string } }
+        relevance: { type: number, minimum: 0, maximum: 1 }
+        authority: { type: number, minimum: 0, maximum: 1 }
+        reason: { type: string }
+        added_by: { type: string, enum: [research, learner] }
+        approved: { type: boolean }
+
+    SourceList:
+      type: object
+      required: [by_topic, further_reading]
+      properties:
+        by_topic:
+          type: array
+          items:
+            type: object
+            required: [topic, sources]
+            properties:
+              topic: { $ref: "#/components/schemas/Topic" }
+              sources: { type: array, items: { $ref: "#/components/schemas/DeckSource" } }
+        further_reading: { type: array, items: { $ref: "#/components/schemas/Source" } }
+
+    EvidenceRef:
+      type: object
+      required: [kind, label]
+      properties:
+        kind: { type: string, enum: [slide, book, web] }
+        label: { type: string, description: 'Human-readable, e.g. "Slide 12", "Kleppmann, DDIA, p. 84", "PostgreSQL Docs › MVCC"' }
+        slide: { type: [integer, "null"] }
+        source_id: { type: [string, "null"] }
+        page_label: { type: [string, "null"] }
+        section_id: { type: [string, "null"] }
+        url: { type: [string, "null"] }
+
+    Disagreement:
+      type: object
+      required: [id, topic_id, claim, positions, assessment]
+      properties:
+        id: { type: string }
+        topic_id: { type: string }
+        claim: { type: string }
+        involves_slide: { type: [integer, "null"] }
+        positions:
+          type: array
+          minItems: 2
+          items:
+            type: object
+            required: [statement, evidence]
+            properties:
+              statement: { type: string }
+              evidence: { type: array, items: { $ref: "#/components/schemas/EvidenceRef" } }
+        assessment: { type: string }
+
+    Organization:
+      type: string
+      enum: [by_slide, by_topic]
+
+    Format:
+      type: string
+      enum: [pdf, docx, md, html]
+
+    ExplanationDocument:
+      type: object
+      required: [id, deck_id, organization, formats, status, created_at]
+      properties:
+        id: { type: string }
+        deck_id: { type: string }
+        organization: { $ref: "#/components/schemas/Organization" }
+        formats: { type: array, items: { $ref: "#/components/schemas/Format" } }
+        slide_range: { type: [array, "null"], items: { type: integer } }
+        status: { type: string, enum: [queued, generating, rendering, ready, failed] }
+        progress: { type: number, minimum: 0, maximum: 1 }
+        downloads:
+          type: object
+          description: format → download URL, present when ready
+          additionalProperties: { type: string }
+        stats:
+          type: object
+          properties:
+            sections: { type: integer }
+            reconstructed_slides: { type: integer }
+            disagreements_shown: { type: integer }
+            dropped_blocks: { type: integer, description: Blocks removed for failing citation validation }
+        cost_usd: { type: number }
+        created_at: { type: string, format: date-time }
+        error: { $ref: "#/components/schemas/Problem" }
+
+    StageEstimate:
+      type: object
+      required: [stage, model, calls, input_tokens, output_tokens, usd, path]
+      properties:
+        stage: { type: string }
+        model: { type: string }
+        calls: { type: integer }
+        input_tokens: { type: integer }
+        output_tokens: { type: integer }
+        tool_calls: { type: integer }
+        usd: { type: number }
+        path: { type: string, enum: [provider, local] }
+
+    RunEstimate:
+      type: object
+      required: [stages, total_usd, est_minutes]
+      properties:
+        stages: { type: array, items: { $ref: "#/components/schemas/StageEstimate" } }
+        total_usd: { type: number }
+        est_minutes: { type: number }
+        budget:
+          type: object
+          properties:
+            topics: { type: integer }
+            searches_per_topic: { type: integer }
+            pages_per_topic: { type: integer }
+
+    Run:
+      type: object
+      required: [id, deck_id, kind, status, started_at]
+      properties:
+        id: { type: string }
+        deck_id: { type: string }
+        kind: { type: string, enum: [extract, research, process_sources, generate, qa] }
+        status: { type: string, enum: [running, paused, completed, failed, cancelled] }
+        stage: { type: [string, "null"] }
+        progress: { type: number, minimum: 0, maximum: 1 }
+        estimate: { $ref: "#/components/schemas/RunEstimate" }
+        cost_usd: { type: number }
+        cost_by_stage: { type: object, additionalProperties: { type: number } }
+        started_at: { type: string, format: date-time }
+        ended_at: { type: [string, "null"], format: date-time }
+        error: { $ref: "#/components/schemas/Problem" }
+
+    DeckEvent:
+      type: object
+      required: [event, deck_id, at]
+      properties:
+        event: { type: string }
+        deck_id: { type: string }
+        at: { type: string, format: date-time }
+        run: { $ref: "#/components/schemas/Run" }
+        slide_number: { type: integer }
+        source_id: { type: string }
+        document_id: { type: string }
+        message: { type: string }
+
+    QaTurn:
+      type: object
+      required: [id, thread_id, role, text, citations, declined, created_at]
+      properties:
+        id: { type: string }
+        thread_id: { type: string }
+        role: { type: string, enum: [learner, assistant] }
+        text: { type: string }
+        citations: { type: array, items: { $ref: "#/components/schemas/EvidenceRef" } }
+        declined: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    QuizState:
+      type: object
+      required: [id, deck_id, slide_from, slide_to, status, index, total]
+      properties:
+        id: { type: string }
+        deck_id: { type: string }
+        slide_from: { type: integer }
+        slide_to: { type: integer }
+        status: { type: string, enum: [active, completed] }
+        index: { type: integer }
+        total: { type: integer }
+        question: { type: [string, "null"] }
+        hint_level: { type: integer, minimum: 0, maximum: 3 }
+        score: { type: object, properties: { correct: { type: integer }, answered: { type: integer } } }
+
+    QuizFeedback:
+      type: object
+      required: [verdict, hint_level, state]
+      properties:
+        verdict: { type: string, enum: [correct, partial, incorrect, revealed] }
+        misconception: { type: [string, "null"] }
+        hint: { type: [string, "null"] }
+        pointer: { oneOf: [{ $ref: "#/components/schemas/EvidenceRef" }, { type: "null" }] }
+        revealed_answer: { type: [string, "null"] }
+        explanation: { type: [string, "null"] }
+        citations: { type: array, items: { $ref: "#/components/schemas/EvidenceRef" } }
+        hint_level: { type: integer, minimum: 0, maximum: 3 }
+        state: { $ref: "#/components/schemas/QuizState" }

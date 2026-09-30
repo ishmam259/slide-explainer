@@ -1,0 +1,10 @@
+{
+  "venvPath": "backend",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "include": ["backend/src", "backend/tests"],
+  "executionEnvironments": [
+    { "root": "backend/src" },
+    { "root": "backend/tests", "extraPaths": ["backend/src"] }
+  ]
+}
