@@ -25,11 +25,11 @@ def run_out(db: Database, run: Run) -> RunOut:
     return RunOut(
         id=run.id,
         deck_id=run.deck_id,
-        kind=run.kind,  # type: ignore[arg-type]
-        status=run.status,  # type: ignore[arg-type]
+        kind=run.kind,
+        status=run.status,
         stage=run.stage,
         progress=run.progress,
-        estimate=run.estimate,  # type: ignore[arg-type]
+        estimate=run.estimate,
         cost_usd=round(sum(by_stage.values()), 6),
         cost_by_stage=by_stage,
         started_at=run.started_at,
@@ -87,9 +87,7 @@ class RunTracker:
             run.progress = max(0.0, min(1.0, progress))
         self._emit(run_id, "run.progress")
 
-    def finish(
-        self, run_id: str, status: str, error: SlidexError | None = None
-    ) -> None:
+    def finish(self, run_id: str, status: str, error: SlidexError | None = None) -> None:
         with self.db.session() as s:
             run = s.get(Run, run_id)
             if run is None:

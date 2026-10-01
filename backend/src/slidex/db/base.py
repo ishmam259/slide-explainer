@@ -48,7 +48,7 @@ class Database:
         self._sessions = sessionmaker(self.engine, expire_on_commit=False)
 
     def init(self) -> None:
-        from slidex.db import tables  # noqa: F401, PLC0415 — register tables
+        from slidex.db import tables  # noqa: F401 — register tables
 
         Base.metadata.create_all(self.engine)
         with self.engine.begin() as conn:

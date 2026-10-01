@@ -163,8 +163,10 @@ class OpenAIClient:
                 openai.InternalServerError,
             ) as exc:
                 if attempt == MAX_ATTEMPTS - 1:
-                    code = "rate_limited" if isinstance(exc, openai.RateLimitError) else (
-                        "provider_unavailable"
+                    code = (
+                        "rate_limited"
+                        if isinstance(exc, openai.RateLimitError)
+                        else ("provider_unavailable")
                     )
                     raise SlidexError(code, str(exc)) from exc
                 await self._sleep(min(30.0, 2**attempt + random.random()))  # noqa: S311

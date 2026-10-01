@@ -23,7 +23,7 @@ class GpuInfo:
 def detect_gpu() -> GpuInfo:
     """CUDA is usable only if onnxruntime(-gpu) exposes CUDAExecutionProvider."""
     try:
-        import onnxruntime  # noqa: PLC0415 — optional extra
+        import onnxruntime
 
         providers = onnxruntime.get_available_providers()
     except Exception:
@@ -45,7 +45,7 @@ def _nvidia_name() -> str | None:
             timeout=5,
             check=False,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError, subprocess.TimeoutExpired:
         return None
     return out.stdout.strip().splitlines()[0] if out.stdout.strip() else None
 

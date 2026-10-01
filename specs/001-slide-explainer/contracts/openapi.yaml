@@ -547,6 +547,7 @@ components:
             - libreoffice_missing
             - renderer_missing
             - validation_error
+            - internal_error
 
     Health:
       type: object

@@ -25,6 +25,7 @@ ProblemCode = Literal[
     "libreoffice_missing",
     "renderer_missing",
     "validation_error",
+    "internal_error",
 ]
 
 PROBLEM_CODES: tuple[str, ...] = get_args(ProblemCode)
@@ -46,6 +47,7 @@ _DEFAULTS: dict[str, tuple[int, str]] = {
     "libreoffice_missing": (503, "LibreOffice not found"),
     "renderer_missing": (503, "Document renderer not installed"),
     "validation_error": (422, "Invalid request"),
+    "internal_error": (500, "Unexpected error"),
 }
 
 

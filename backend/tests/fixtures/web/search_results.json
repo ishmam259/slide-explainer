@@ -1,0 +1,9 @@
+{
+  "*": [
+    {"url": "https://notes.example.edu/replication", "title": "Replication lecture notes"},
+    {"url": "https://docs.example.org/quorum", "title": "Quorum reference"},
+    {"url": "https://spam.example.com/best-db", "title": "Top 10 databases"},
+    {"url": "https://inject.example.net/page", "title": "Helpful page"},
+    {"url": "https://paywall.example.com/article", "title": "Premium article"}
+  ]
+}

@@ -63,7 +63,9 @@ def _rate_limit() -> openai.RateLimitError:
 
 def _auth_error() -> openai.AuthenticationError:
     req = httpx.Request("POST", "https://api.openai.com/v1/responses")
-    return openai.AuthenticationError("bad key", response=httpx.Response(401, request=req), body=None)
+    return openai.AuthenticationError(
+        "bad key", response=httpx.Response(401, request=req), body=None
+    )
 
 
 async def _no_sleep(_: float) -> None:

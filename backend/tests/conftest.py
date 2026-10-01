@@ -11,6 +11,7 @@ import respx
 
 # Must be set before any slidex module reads settings.
 os.environ["SLIDEX_FAKE_LLM"] = "1"
+os.environ["SLIDEX_APPROX_TOKENS"] = "1"  # never download the tokenizer during tests
 os.environ.setdefault("OPENAI_API_KEY", "sk-test-not-a-real-key")
 
 

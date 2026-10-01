@@ -181,7 +181,9 @@ class DeckSource(Base):
         CheckConstraint("length(reason) <= 200", name="ds_reason_len"),
         CheckConstraint("added_by IN ('research','learner')", name="ds_added_by"),
     )
-    deck_id: Mapped[str] = mapped_column(ForeignKey("deck.id", ondelete="CASCADE"), primary_key=True)
+    deck_id: Mapped[str] = mapped_column(
+        ForeignKey("deck.id", ondelete="CASCADE"), primary_key=True
+    )
     source_id: Mapped[str] = mapped_column(
         ForeignKey("source.id", ondelete="CASCADE"), primary_key=True
     )

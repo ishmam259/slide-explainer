@@ -10,7 +10,7 @@ import asyncio
 import concurrent.futures
 import logging
 import threading
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -75,7 +75,9 @@ class Worker:
 
         return asyncio.run_coroutine_threadsafe(_start(), self._loop)
 
-    def run_sync(self, factory: Callable[[], Awaitable[Any]], timeout: float = 600) -> Any:
+    def run_sync(
+        self, factory: Callable[[], Coroutine[Any, Any, Any]], timeout: float = 600
+    ) -> Any:
         """Run a coroutine on the worker loop and wait for its result (used for small jobs)."""
         if self._loop is None:
             raise RuntimeError("worker not started")

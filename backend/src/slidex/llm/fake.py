@@ -71,6 +71,8 @@ class FakeLLM:
         recordings_dir: Path | None = None,
         search_fixture: Path | None = None,
     ) -> None:
+        from slidex.llm import fake_handlers  # noqa: F401 — registers prompt handlers
+
         self.roles = resolve_roles(settings)
         self._ledger = ledger
         self._recordings = recordings_dir

@@ -66,7 +66,7 @@ class FileStore:
     def exists(self, digest: str) -> bool:
         try:
             self.path(digest)
-        except (FileNotFoundError, ValueError):
+        except FileNotFoundError, ValueError:
             return False
         return True
 
