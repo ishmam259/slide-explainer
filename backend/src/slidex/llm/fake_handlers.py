@@ -204,14 +204,8 @@ def _quiz(req: FakeRequest, _: type[BaseModel]) -> BaseModel:
 
 @register_handler("quiz_grade.v1")
 def _grade(req: FakeRequest, _: type[BaseModel]) -> BaseModel:
-    ref = set(
-        _WORDS.findall(
-            (
-                _section(req.input_text, "REFERENCE ANSWER:")
-                or re.search(r"REFERENCE ANSWER: (.*)", req.input_text).group(1)
-            ).lower()
-        )
-    )
+    ref_m = re.search(r"REFERENCE ANSWER: (.*)", req.input_text)
+    ref = set(_WORDS.findall((ref_m.group(1) if ref_m else "").lower()))
     ans_m = re.search(r"STUDENT ANSWER: (.*)", req.input_text)
     ans = set(_WORDS.findall((ans_m.group(1) if ans_m else "").lower()))
     overlap = len(ref & ans) / max(len(ref), 1)

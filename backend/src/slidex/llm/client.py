@@ -13,6 +13,7 @@ import json
 import random
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Any, Literal, Protocol
 
 import openai
@@ -163,12 +164,9 @@ class OpenAIClient:
                 openai.InternalServerError,
             ) as exc:
                 if attempt == MAX_ATTEMPTS - 1:
-                    code = (
-                        "rate_limited"
-                        if isinstance(exc, openai.RateLimitError)
-                        else ("provider_unavailable")
-                    )
-                    raise SlidexError(code, str(exc)) from exc
+                    if isinstance(exc, openai.RateLimitError):
+                        raise SlidexError("rate_limited", str(exc)) from exc
+                    raise SlidexError("provider_unavailable", str(exc)) from exc
                 await self._sleep(min(30.0, 2**attempt + random.random()))  # noqa: S311
         raise AssertionError("unreachable")
 
@@ -234,6 +232,9 @@ class OpenAIClient:
             f"The model returned output that does not match {schema.__name__} (after a retry).",
         )
 
+    async def _embed_call(self, model: str, inputs: list[str]) -> Any:
+        return await self._sdk.embeddings.create(model=model, input=inputs)
+
     async def embed(
         self, texts: Sequence[str], *, stage: str, run_id: str | None = None
     ) -> list[list[float]]:
@@ -250,9 +251,7 @@ class OpenAIClient:
         for start in range(0, len(missing), EMBED_BATCH):
             batch = missing[start : start + EMBED_BATCH]
             inputs = [texts[i] for i in batch]
-            resp = await self._with_retries(
-                lambda inputs=inputs: self._sdk.embeddings.create(model=spec.model, input=inputs)
-            )
+            resp = await self._with_retries(partial(self._embed_call, spec.model, inputs))
             tokens = int(getattr(getattr(resp, "usage", None), "prompt_tokens", 0) or 0)
             self._ledger.record(run_id, stage, spec.model, Usage(input_tokens=tokens))
             for i, item in zip(batch, resp.data, strict=True):

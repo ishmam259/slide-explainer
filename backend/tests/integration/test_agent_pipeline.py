@@ -19,6 +19,7 @@ from sqlalchemy import select
 from slidex.api.deps import AppContext
 from slidex.core.config import get_settings
 from slidex.core.errors import SlidexError
+from slidex.core.hardware import chromium_installed
 from slidex.db.tables import Deck, DeckSource, ExplanationDocument, Run, Slide, Source, Topic
 from slidex.graph import deck_graph, generate_graph, qa_graph
 from slidex.llm.fake import FakeLLM
@@ -177,7 +178,10 @@ def test_full_agent_pipeline(ctx: AppContext, web: respx.MockRouter) -> None:
         doc = s.get(ExplanationDocument, doc_id)
         assert doc is not None
     assert doc.status == "ready" and "md" in doc.files
-    assert doc.error and doc.error["code"] == "renderer_missing"  # pdf renderer not built yet
+    if chromium_installed():
+        assert "pdf" in doc.files and doc.error is None
+    else:
+        assert doc.error and doc.error["code"] == "renderer_missing"
     model = ExplanationDocumentModel.model_validate(doc.content)
     assert [s.slide_numbers for s in model.sections] == [[1], [2], [3]]  # divider skipped
     for section in model.sections:

@@ -1,7 +1,4 @@
-"""Renderer registry: ExplanationDocumentModel → file bytes per format.
-
-Markdown is implemented here; HTML/PDF/DOCX register themselves when added (tasks T079–T081).
-"""
+"""Renderer registry: ExplanationDocumentModel → file bytes per format (md, html, pdf, docx)."""
 
 from __future__ import annotations
 
@@ -24,6 +21,6 @@ def register(fmt: str, ext: str) -> Callable[[Renderer], Renderer]:
 
 
 def available_formats() -> set[str]:
-    from slidex.render import markdown  # noqa: F401 — registers "md"
+    from slidex.render import docx, html, markdown, pdf  # noqa: F401 — registration
 
     return set(RENDERERS)

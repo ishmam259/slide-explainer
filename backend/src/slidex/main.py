@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import select
 
-from slidex.api import files, health, runs
+from slidex.api import decks, documents, files, health, learn, research, runs
 from slidex.api.deps import AppContext
 from slidex.core.config import Settings, get_settings
 from slidex.core.errors import install_error_handlers
@@ -56,6 +56,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.ctx = AppContext.build(settings)
     install_error_handlers(app)
-    for router in (health.router, files.router, runs.router):
+    for router in (
+        health.router,
+        files.router,
+        runs.router,
+        decks.router,
+        research.router,
+        documents.router,
+        learn.router,
+    ):
         app.include_router(router)
     return app

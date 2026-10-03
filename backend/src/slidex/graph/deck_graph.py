@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from itertools import pairwise
+from pathlib import Path
 from typing import Any, NotRequired, TypedDict
 
 from langchain_core.runnables import RunnableConfig
@@ -25,6 +26,7 @@ from langgraph.types import Command, interrupt
 from sqlalchemy import select
 
 from slidex.api.deps import AppContext
+from slidex.books.figures import capture_figures
 from slidex.books.raptor import build_tree
 from slidex.core.errors import SlidexError
 from slidex.db.tables import Deck, DeckSource, Source
@@ -60,6 +62,13 @@ def set_deck_status(ctx: AppContext, deck_id: str, status: str) -> None:
         deck.status = status
         deck.error = None
     ctx.events.publish(DeckEvent(event="deck.status", deck_id=deck_id, message=status))
+
+
+def _book_path(ctx: AppContext, source_id: str) -> Path:
+    with ctx.db.session() as s:
+        src = s.get(Source, source_id)
+        assert src is not None and src.file_hash
+        return ctx.files.path(src.file_hash)
 
 
 def build_graph(ctx: AppContext) -> StateGraph[DeckState]:
@@ -136,6 +145,8 @@ def build_graph(ctx: AppContext) -> StateGraph[DeckState]:
                 DeckEvent(event="source.updated", deck_id=deck_id, source_id=source_id)
             )
             await build_tree(ctx, source_id, run_id)
+            ctx.runs.stage(run_id, "figure_explanation")
+            await capture_figures(ctx, source_id, _book_path(ctx, source_id), run_id)
             ctx.runs.progress(run_id, (i + 1) / max(len(books), 1))
         set_deck_status(ctx, deck_id, "ready")
         return {}
@@ -219,7 +230,7 @@ def confirm_research(
     run_id = ctx.runs.create(
         deck_id, "research", estimate=estimate, params={"topic_ids": topic_ids}
     )
-    cmd = Command(resume={"topic_ids": topic_ids})
+    cmd: Command[Any] = Command(resume={"topic_ids": topic_ids})
     ctx.worker.submit(run_id, lambda: run_graph(ctx, deck_id, run_id, cmd))
     return run_id
 
@@ -227,7 +238,7 @@ def confirm_research(
 def approve_sources(ctx: AppContext, deck_id: str, estimate: dict[str, Any] | None = None) -> str:
     _require_status(ctx, deck_id, ("awaiting_source_approval",))
     run_id = ctx.runs.create(deck_id, "process_sources", estimate=estimate)
-    cmd = Command(resume={"approved": True})
+    cmd: Command[Any] = Command(resume={"approved": True})
     ctx.worker.submit(run_id, lambda: run_graph(ctx, deck_id, run_id, cmd))
     return run_id
 

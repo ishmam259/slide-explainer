@@ -43,7 +43,8 @@ class Node:
 def _reduce(vectors: np.ndarray) -> np.ndarray:
     x = StandardScaler().fit_transform(vectors)
     dims = min(PCA_DIMS, x.shape[0] - 1, x.shape[1])
-    return PCA(n_components=dims, random_state=SEED).fit_transform(x) if dims >= 2 else x
+    reduced = PCA(n_components=dims, random_state=SEED).fit_transform(x) if dims >= 2 else x
+    return np.asarray(reduced)
 
 
 def choose_k(x: np.ndarray, max_k: int = MAX_K) -> int:
@@ -81,7 +82,9 @@ def split_oversized(members: list[int], tokens: list[int], vectors: np.ndarray) 
         return [members]
     sub = soft_clusters(vectors[members])
     if len(sub) <= 1:  # cannot split further: chunk sequentially
-        out, cur, cur_t = [], [], 0
+        out: list[list[int]] = []
+        cur: list[int] = []
+        cur_t = 0
         for i in members:
             if cur and cur_t + tokens[i] > MAX_CLUSTER_TOKENS:
                 out.append(cur)

@@ -176,6 +176,6 @@ def _pdf_result(url: str, status: int, raw: bytes) -> FetchResult:
         if doc.needs_pass:
             raise FetchBlocked("PDF is password protected")
         title = (doc.metadata or {}).get("title") or None
-        text = "\n\n".join(str(page.get_text("text")) for page in doc)
+        text = "\n\n".join(str(page.get_text("text")) for page in doc.pages())
         pages = doc.page_count
     return FetchResult(url, status, "application/pdf", title, text, True, raw, page_count=pages)

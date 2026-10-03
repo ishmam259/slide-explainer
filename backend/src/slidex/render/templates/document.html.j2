@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ doc.title }} — explained</title>
+<style>{{ katex_css }}</style>
+<style>
+  /* DESIGN.md print theme: ink on white, colour only for state */
+  :root { --ink:#171717; --body:#4d4d4d; --mute:#888; --hairline:#ebebeb; --soft:#fafafa;
+          --soft2:#f5f5f5; --link:#0070f3; --warning:#ab570a; --warning-soft:#ffefcf;
+          --running:#7928ca; --running-soft:#ece3fa; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); background: #fff;
+         font: 400 15px/1.6 Geist, Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 24px; }
+  h1 { font-size: 32px; line-height: 40px; letter-spacing: -1.28px; font-weight: 600; margin: 0 0 8px; }
+  h2 { font-size: 22px; line-height: 30px; letter-spacing: -0.6px; font-weight: 600;
+       margin: 48px 0 16px; padding-top: 24px; border-top: 1px solid var(--hairline); }
+  .meta { color: var(--mute); font: 12px/16px "Geist Mono", ui-monospace, Menlo, monospace; }
+  .slide-img { width: 100%; border: 1px solid var(--hairline); border-radius: 8px; margin: 8px 0 16px; }
+  .block { margin: 16px 0; }
+  .label { font-weight: 600; font-size: 13px; color: var(--body); margin-bottom: 4px; }
+  .callout { border: 1px solid var(--hairline); border-radius: 8px; padding: 12px 16px; background: var(--soft); }
+  .callout.reconstructed { background: var(--running-soft); border-color: transparent; }
+  .callout.disagreement { background: var(--warning-soft); border-left: 2px solid var(--warning); }
+  .callout .label .icon { margin-right: 6px; }
+  .formula { padding: 12px 16px; background: var(--soft); border-radius: 8px; overflow-x: auto; }
+  .cites { margin-top: 6px; font: 12px/16px "Geist Mono", ui-monospace, Menlo, monospace; color: var(--mute); }
+  .cites a { color: var(--link); text-decoration: none; }
+  table { border-collapse: collapse; margin: 8px 0; }
+  td, th { border: 1px solid var(--hairline); padding: 4px 8px; }
+  code { font-family: "Geist Mono", ui-monospace, Menlo, monospace; font-size: 13px;
+         background: var(--soft2); border-radius: 4px; padding: 1px 4px; }
+  ul.sources { padding-left: 20px; }
+  @media print { main { padding: 0; } h2 { break-after: avoid; } .slide-img, .callout, .formula { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{ doc.title }}</h1>
+  <div class="meta">Explained {{ "slide by slide" if doc.organization == "by_slide" else "by topic" }} · {{ sections|length }} sections · every claim cited</div>
+
+  {% for s in sections %}
+  <section>
+    <h2>{{ s.title }}</h2>
+    {% if s.image %}<img class="slide-img" src="{{ s.image }}" alt="Slide {{ s.slides[0] }}">{% endif %}
+    {% for b in s.blocks %}
+      {% if b.type in ("slide_says", "reconstructed", "disagreement") %}
+      <div class="block callout {{ b.type }}">
+        <div class="label"><span class="icon" aria-hidden="true">{% if b.type == "slide_says" %}▢{% elif b.type == "reconstructed" %}◆{% else %}⚠{% endif %}</span>{{ b.label }}{% if b.confidence is defined %} · confidence {{ b.confidence }}%{% endif %}</div>
+        {{ b.body }}
+      {% elif b.type == "formula" %}
+      <div class="block">
+        <div class="label">{{ b.label }}</div>
+        <div class="formula" data-latex="{{ b.latex }}"></div>
+        {{ b.body }}
+      {% else %}
+      <div class="block">
+        {% if b.label %}<div class="label">{{ b.label }}</div>{% endif %}
+        {{ b.body }}
+      {% endif %}
+        {% if b.citations %}
+        <div class="cites">{% for c in b.citations %}{% if c.url %}<a href="{{ c.url }}">{{ c.label }}</a>{% else %}{{ c.label }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </section>
+  {% endfor %}
+
+  {% if doc.sources %}
+  <h2>Sources</h2>
+  <ul class="sources">
+    {% for src in doc.sources %}<li>{% if src.authors %}{{ src.authors|join(", ") }}, {% endif %}{% if src.url %}<a href="{{ src.url }}">{{ src.title }}</a>{% else %}{{ src.title }}{% endif %}{% if src.year %} ({{ src.year }}){% endif %}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if doc.further_reading %}
+  <h2>Further reading</h2>
+  <ul class="sources">
+    {% for src in doc.further_reading %}<li>{% if src.authors %}{{ src.authors|join(", ") }}, {% endif %}{{ src.title }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</main>
+</body>
+</html>

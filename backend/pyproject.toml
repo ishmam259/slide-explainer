@@ -79,7 +79,13 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 # PyMuPDF ships incomplete type hints; calls into it are checked by tests instead.
-module = ["slidex.books.parse", "slidex.research.fetch", "slidex.intake.*"]
+module = [
+    "slidex.books.parse",
+    "slidex.books.figures",
+    "slidex.research.fetch",
+    "slidex.intake.*",
+    "slidex.api.research",
+]
 disallow_untyped_calls = false
 
 [tool.pyright]

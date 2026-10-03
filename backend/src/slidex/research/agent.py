@@ -258,10 +258,13 @@ async def research_topic(
         t.research_status = "searching"
     candidates = await discover(ctx, deck, topic, run_id)
     usable: list[str] = []
+    seen_ids: list[str] = []
     for url, title in candidates:
         source_id = _upsert_source(ctx, url, title)
+        seen_ids.append(source_id)
         if await ingest_page(ctx, fetcher, source_id, url, run_id):
             usable.append(source_id)
+    _link_further_reading(ctx, deck.id, topic.id, seen_ids)
     ranked: list[tuple[float, str, SourceRanking]] = []
     for source_id in usable:
         r = await rank_source(ctx, deck.id, topic, source_id, run_id)
@@ -294,6 +297,31 @@ async def research_topic(
         t = s.get(Topic, topic.id)
         assert t is not None
         t.research_status = "done" if ranked else "no_reliable_source"
+
+
+def _link_further_reading(
+    ctx: AppContext, deck_id: str, topic_id: str, source_ids: list[str]
+) -> None:
+    """Paywalled/non-free sources are listed as further reading only (FR-011); never approved."""
+    with ctx.db.session() as s:
+        for source_id in source_ids:
+            src = s.get(Source, source_id)
+            if src is None or src.access != "further_reading":
+                continue
+            ds = s.get(DeckSource, (deck_id, source_id))
+            if ds is None:
+                s.add(
+                    DeckSource(
+                        deck_id=deck_id,
+                        source_id=source_id,
+                        topic_ids=[topic_id],
+                        added_by="research",
+                        relevance=0.0,
+                        authority=0.0,
+                        approved=False,
+                        reason="Not freely available — further reading",
+                    )
+                )
 
 
 async def research_deck(

@@ -304,7 +304,7 @@ def reveal_quiz(ctx: AppContext, quiz_id: str) -> dict[str, Any]:
         ).one()
         it.revealed = True
         total = len(list(s.scalars(select(QuizItem.id).where(QuizItem.session_id == quiz_id))))
-        result = {
+        result: dict[str, Any] = {
             "verdict": "revealed",
             "misconception": None,
             "hint": None,
