@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "C:\\Users\\16IRL8\\AppData\\Roaming\\Python\\Python314\\Scripts\\uv.exe",
+      "runtimeArgs": ["--directory", "backend", "run", "slidex", "serve"],
+      "port": 8000,
+      "url": "http://127.0.0.1:8000"
+    },
+    {
+      "name": "backend-demo",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "$env:SLIDEX_FAKE_LLM='1'; $env:SLIDEX_DATA_DIR='../data-demo'; & 'C:\\Users\\16IRL8\\AppData\\Roaming\\Python\\Python314\\Scripts\\uv.exe' --directory backend run slidex serve"
+      ],
+      "port": 8000,
+      "url": "http://127.0.0.1:8000"
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 # Runtime data (local database, uploads, renders, generated documents)
 data/
+data-*/
 
 # Secrets
 .env

@@ -11,6 +11,14 @@ from slidex.explain.slide import SlideResult
 from slidex.llm.schemas import DocSection, ExplanationDocumentModel, SourceRef
 
 
+def _section_title(n: int, title: str) -> str:
+    """'Slide 4: Consistent hashing' — without repeating 'Slide 4' when that is the title."""
+    clean = title.strip()
+    if not clean or clean.lower() in (f"slide {n}", f"slide {n}:"):
+        return f"Slide {n}"
+    return f"Slide {n}: {clean}"
+
+
 def _source_ref(src: Source) -> SourceRef:
     return SourceRef(
         source_id=src.id,
@@ -58,7 +66,7 @@ def assemble(
             sections.append(
                 DocSection(
                     slide_numbers=[n],
-                    title=f"Slide {n}: {r.title}",
+                    title=_section_title(n, r.title),
                     slide_image_hash=slide_images.get(n),
                     blocks=r.blocks,
                     evidence=r.evidence,

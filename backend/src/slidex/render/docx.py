@@ -165,11 +165,7 @@ def _block(d: DocxDocument, b: Block, ev: dict[str, EvidenceRef], images: object
         head = d.add_paragraph()
         r = head.add_run(
             label
-            + (
-                f" · confidence {round(b.confidence * 100)}%"
-                if b.type == "reconstructed"
-                else ""
-            )
+            + (f" · confidence {round(b.confidence * 100)}%" if b.type == "reconstructed" else "")
         )
         r.bold = True
         if b.type in ("slide_says", "reconstructed", "disagreement"):
