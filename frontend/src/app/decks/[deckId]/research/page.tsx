@@ -131,7 +131,7 @@ export default function ResearchPage({ params }: PageProps<"/decks/[deckId]/rese
       )}
 
       {deck.status === "awaiting_source_approval" && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border-l-2 border-warning bg-warning-soft p-4">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-warning/40 bg-warning-soft p-4">
           <StatusPill state="attention" label="needs approval" />
           <p className="text-sm">
             Review the sources below. Only approved, freely available sources are used to explain your slides.
@@ -212,7 +212,7 @@ export default function ResearchPage({ params }: PageProps<"/decks/[deckId]/rese
           </CardHeader>
           <CardContent className="space-y-4">
             {disagreements.map((d) => (
-              <div key={d.id} className="rounded-md border-l-2 border-warning bg-warning-soft p-3">
+              <div key={d.id} className="rounded-xl border border-warning/40 bg-warning-soft p-3">
                 <p className="font-medium">{d.claim}</p>
                 {d.positions.map((p, i) => (
                   <div key={i} className="mt-2 text-sm">

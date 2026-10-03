@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { FileUp, GripVertical, X } from "lucide-react";
+import { ArrowDown, ArrowUp, FileUp, GripVertical, X } from "lucide-react";
 import { z } from "zod";
 
 import { deckState, StatusPill } from "@/components/slidex/status-pill";
@@ -80,13 +80,32 @@ export default function Home() {
   const images = files.length > 0 && files.every((f) => /\.(png|jpe?g|webp)$/i.test(f.name));
 
   return (
+    <>
+    <section className="relative overflow-hidden border-b border-border">
+      <div className="mesh-gradient pointer-events-none absolute inset-x-0 -top-24 h-[420px]" aria-hidden />
+      <div className="relative mx-auto max-w-5xl px-4 pt-16 pb-12">
+        <h1 className="display-xl max-w-3xl text-balance">Understand any slide deck.</h1>
+        <p className="body-lg mt-4 max-w-2xl text-muted-foreground">
+          Upload your lecture slides. The agent reads every slide — even the vague ones — researches
+          books and trusted web sources, and writes a detailed explanation where every claim is cited.
+        </p>
+        <dl className="mt-10 grid max-w-3xl gap-x-8 gap-y-4 border-t border-border pt-6 text-sm sm:grid-cols-3">
+          {[
+            ["Reads every slide", "Text, speaker notes, diagrams and formulas — and works out what vague slides mean."],
+            ["Researches sources you approve", "Open textbooks, official docs and university notes. Paywalled books stay further reading."],
+            ["Explains with citations", "A PDF or Word document where each point names its slide, page or link."],
+          ].map(([title, body]) => (
+            <div key={title}>
+              <dt className="font-medium">{title}</dt>
+              <dd className="mt-1 text-muted-foreground">{body}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
     <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 lg:grid-cols-[1fr_340px]">
       <section>
-        <h1 className="display-md">Explain my slides</h1>
-        <p className="mt-1 text-muted-foreground">
-          Upload a lecture deck. The agent reads every slide — even vague ones — researches books and
-          trusted web sources, and writes a detailed, cited explanation.
-        </p>
+        <h2 className="display-sm">Upload slides</h2>
         <form onSubmit={submit} className="mt-6 space-y-5">
           <div
             role="button"
@@ -98,7 +117,7 @@ export default function Home() {
               e.preventDefault();
               addFiles(e.dataTransfer.files);
             }}
-            className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-card px-6 py-10 text-center hover:border-muted-foreground"
+            className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center shadow-level-2 transition-colors hover:border-muted-foreground"
           >
             <FileUp className="size-5 text-muted-foreground" aria-hidden />
             <span className="font-medium">Drop a PPTX or PDF, or slide images</span>
@@ -124,10 +143,10 @@ export default function Home() {
                     {images && (
                       <>
                         <Button type="button" variant="ghost" size="sm" onClick={() => move(i, -1)} aria-label="Move up">
-                          ↑
+                          <ArrowUp className="size-4" aria-hidden />
                         </Button>
                         <Button type="button" variant="ghost" size="sm" onClick={() => move(i, 1)} aria-label="Move down">
-                          ↓
+                          <ArrowDown className="size-4" aria-hidden />
                         </Button>
                       </>
                     )}
@@ -219,6 +238,7 @@ export default function Home() {
         </Card>
       </aside>
     </div>
+    </>
   );
 }
 

@@ -23,7 +23,7 @@
   .label { font-weight: 600; font-size: 13px; color: var(--body); margin-bottom: 4px; }
   .callout { border: 1px solid var(--hairline); border-radius: 8px; padding: 12px 16px; background: var(--soft); }
   .callout.reconstructed { background: var(--running-soft); border-color: transparent; }
-  .callout.disagreement { background: var(--warning-soft); border-left: 2px solid var(--warning); }
+  .callout.disagreement { background: var(--warning-soft); border-color: #f5a62366; }
   .callout .label .icon { margin-right: 6px; }
   .formula { padding: 12px 16px; background: var(--soft); border-radius: 8px; overflow-x: auto; }
   .cites { margin-top: 6px; font: 12px/16px "Geist Mono", ui-monospace, Menlo, monospace; color: var(--mute); }
@@ -48,7 +48,7 @@
     {% for b in s.blocks %}
       {% if b.type in ("slide_says", "reconstructed", "disagreement") %}
       <div class="block callout {{ b.type }}">
-        <div class="label"><span class="icon" aria-hidden="true">{% if b.type == "slide_says" %}▢{% elif b.type == "reconstructed" %}◆{% else %}⚠{% endif %}</span>{{ b.label }}{% if b.confidence is defined %} · confidence {{ b.confidence }}%{% endif %}</div>
+        <div class="label">{{ b.label }}{% if b.confidence is defined %} · confidence {{ b.confidence }}%{% endif %}</div>
         {{ b.body }}
       {% elif b.type == "formula" %}
       <div class="block">
