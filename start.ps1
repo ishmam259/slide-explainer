@@ -3,11 +3,12 @@
 
     .\start.ps1          demo mode: no API key, no cost (built-in offline model)
     .\start.ps1 -Live    live mode: real OpenAI models, needs backend\.env with OPENAI_API_KEY
+    .\start.ps1 -Live -DataDir ../data-live-sample   use another data folder (relative to backend\)
 
   Installs dependencies on first run, starts the backend (127.0.0.1:8000) and the
   frontend (localhost:3000) in two windows, then opens the browser.
 #>
-param([switch]$Live)
+param([switch]$Live, [string]$DataDir = "")
 
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
@@ -51,6 +52,7 @@ if (-not (Test-Path "$root\frontend\node_modules")) {
 }
 
 # --- start -----------------------------------------------------------------
+$dataOverride = if ($DataDir) { "; `$env:SLIDEX_DATA_DIR='$DataDir'" } else { "" }
 if ($Live) {
   $envCmd = "`$env:SLIDEX_FAKE_LLM='0'; `$env:SLIDEX_DEMO_WEB='0'; `$env:SLIDEX_DATA_DIR='../data'"
   $mode = "LIVE (real OpenAI models - costs money)"
@@ -60,17 +62,19 @@ if ($Live) {
 }
 Step "Starting backend in $mode"
 Start-Process powershell -ArgumentList "-NoExit", "-Command",
-  "`$host.UI.RawUI.WindowTitle='Slide Explainer backend'; $envCmd; & '$uv' --directory '$root\backend' run slidex serve"
+  "`$host.UI.RawUI.WindowTitle='Slide Explainer backend'; $envCmd$dataOverride; & '$uv' --directory '$root\backend' run slidex serve"
 
 Step "Starting frontend"
 Start-Process powershell -ArgumentList "-NoExit", "-Command",
   "`$host.UI.RawUI.WindowTitle='Slide Explainer frontend'; npm --prefix '$root\frontend' run dev"
 
-Step "Waiting for http://localhost:3000"
+Step "Waiting for the backend and http://localhost:3000"
 $deadline = (Get-Date).AddMinutes(3)
-while ((Get-Date) -lt $deadline) {
-  try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 http://localhost:3000 | Out-Null; break }
-  catch { Start-Sleep -Seconds 2 }
+foreach ($url in "http://127.0.0.1:8000/health", "http://localhost:3000") {
+  while ((Get-Date) -lt $deadline) {
+    try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 $url | Out-Null; break }
+    catch { Start-Sleep -Seconds 2 }
+  }
 }
 Start-Process "http://localhost:3000"
 Write-Host "`nSlide Explainer is running in $mode." -ForegroundColor Green

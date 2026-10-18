@@ -26,7 +26,8 @@ else export SLIDEX_FAKE_LLM=1 SLIDEX_DEMO_WEB=1 SLIDEX_DATA_DIR=../data-demo; mo
 uv --directory "$root/backend" run slidex serve & back=$!
 npm --prefix "$root/frontend" run dev & front=$!
 trap 'kill $back $front 2>/dev/null' EXIT INT TERM
-echo "-> Waiting for http://localhost:3000"
+echo "-> Waiting for the backend and http://localhost:3000"
+for _ in $(seq 90); do curl -fs http://127.0.0.1:8000/health >/dev/null && break; sleep 2; done
 for _ in $(seq 90); do curl -fs http://localhost:3000 >/dev/null && break; sleep 2; done
 (command -v open >/dev/null && open http://localhost:3000) || (command -v xdg-open >/dev/null && xdg-open http://localhost:3000) || true
 echo "Slide Explainer is running in $mode mode. Press Ctrl+C to stop."
