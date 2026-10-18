@@ -785,6 +785,11 @@ export interface components {
             models: {
                 [key: string]: string;
             };
+            /**
+             * Demo Mode
+             * @default false
+             */
+            demo_mode: boolean;
         };
         /** HintIn */
         HintIn: {

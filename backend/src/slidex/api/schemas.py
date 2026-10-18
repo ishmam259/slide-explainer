@@ -26,6 +26,7 @@ class Health(BaseModel):
     libreoffice: bool
     renderer: bool
     models: dict[str, str]
+    demo_mode: bool = False
 
 
 class StageEstimate(BaseModel):

@@ -5,9 +5,13 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import respx
+
+if TYPE_CHECKING:
+    from slidex.api.deps import AppContext
 
 # Must be set before any slidex module reads settings.
 os.environ["SLIDEX_FAKE_LLM"] = "1"
@@ -35,3 +39,14 @@ def _no_real_network() -> Iterator[respx.MockRouter]:
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def app_ctx(_isolated_data_dir: Path) -> Iterator[AppContext]:
+    """A fresh AppContext (fake LLM, isolated SQLite) without the HTTP app or worker."""
+    from slidex.api.deps import AppContext
+    from slidex.core.config import get_settings
+
+    ctx = AppContext.build(get_settings())
+    yield ctx
+    ctx.db.dispose()

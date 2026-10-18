@@ -27,4 +27,5 @@ def get_health(ctx: Annotated[AppContext, Depends(get_ctx)]) -> Health:
         libreoffice=libreoffice,
         renderer=renderer,
         models={role: spec.model for role, spec in roles.items()},
+        demo_mode=ctx.settings.fake_llm,
     )

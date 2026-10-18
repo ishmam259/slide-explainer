@@ -30,6 +30,11 @@ export function AppHeader() {
       </Link>
       <div className="ml-auto flex items-center gap-2">
         {offline && <StatusPill state="error" label="backend offline" />}
+        {health?.demo_mode && (
+          <span title="Offline model: no API calls, costs shown are simulated">
+            <StatusPill state="neutral" label="demo mode · simulated costs" />
+          </span>
+        )}
         {health && !health.api_key_configured && <StatusPill state="attention" label="add OPENAI_API_KEY" />}
         {health && health.api_key_configured && (
           <span className="caption-mono hidden text-muted-foreground sm:inline">

@@ -11,7 +11,7 @@ from markupsafe import Markup
 
 from slidex.db.files import FileStore
 from slidex.llm.schemas import Block, DocSection, EvidenceRef, ExplanationDocumentModel
-from slidex.render import register
+from slidex.render import cited, register
 from slidex.render.browser import katex_css_inline, load_with_math, with_page
 
 _MD = MarkdownIt("commonmark", {"html": False, "linkify": False}).enable("table")
@@ -41,7 +41,7 @@ def md(text: str) -> Markup:
 
 
 def _cites(ids: list[str], ev: dict[str, EvidenceRef]) -> list[EvidenceRef]:
-    return [ev[i] for i in ids if i in ev]
+    return cited(ids, ev)
 
 
 def _block_view(b: Block, ev: dict[str, EvidenceRef]) -> dict[str, object]:

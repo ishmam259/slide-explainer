@@ -18,6 +18,7 @@ from slidex.db.tables import Calibration, CostEntry, Deck, DeckSource, Run, Slid
 
 PAGE_TOKENS = 550
 SECTION_TOKENS = 1800  # average cleaned web page
+TOOL_CALLS_PER_SEARCH = 2  # measured: a search request runs ~2 web searches (live run 2026-10-17)
 
 
 def _ratio(ctx: AppContext, stage: str) -> float:
@@ -103,7 +104,7 @@ def estimate(
                 searches,
                 searches * 1500,
                 searches * 600,
-                tool_calls=searches,
+                tool_calls=searches * TOOL_CALLS_PER_SEARCH,
             ),
             _stage(
                 ctx, "research_fetch_rank", "bulk", pages * 2, pages * 2 * 2500, pages * 2 * 120

@@ -11,5 +11,6 @@ Rules:
   - `clear` — a reader could understand the point from the slide alone.
   - `vague` — only keywords/fragments, missing context, "see lecture", unlabelled diagrams; the meaning must be inferred.
   - `unreadable` — the content cannot be read (blur, glare, tiny text).
-  - `divider` — title, section divider, agenda, "Questions?", or thank-you slides.
+  - `divider` — only slides that teach nothing themselves: the deck's title slide, an agenda/outline, "Questions?", thank-you, or contact slides.
+  - A slide whose only content is a short topic phrase or keyword (e.g. "Quorums", "Why replicate?", "Vector clocks") is `vague`, not `divider`: in a lecture it names something the lecturer explained, so it must be explained. Likewise "Summary" and "Exam: know these" slides are `vague` when they name topics.
 - `unreadable_regions`: short descriptions of regions you could not read.

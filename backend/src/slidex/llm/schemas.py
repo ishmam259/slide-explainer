@@ -206,7 +206,9 @@ class ReferBackBlock(BaseModel):
     slide: int
 
 
-Block = Annotated[
+# A plain union (each block has a unique Literal `type`): a pydantic discriminator would emit
+# JSON Schema `oneOf`, which OpenAI structured outputs reject (only `anyOf` is allowed).
+Block = (
     SlideSaysBlock
     | ExplanationBlock
     | DiagramBlock
@@ -216,9 +218,8 @@ Block = Annotated[
     | ReconstructedBlock
     | DisagreementBlock
     | BookFigureBlock
-    | ReferBackBlock,
-    Field(discriminator="type"),
-]
+    | ReferBackBlock
+)
 
 
 class SlideExplanation(BaseModel):

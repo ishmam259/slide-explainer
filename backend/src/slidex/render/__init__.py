@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from slidex.db.files import FileStore
-from slidex.llm.schemas import ExplanationDocumentModel
+from slidex.llm.schemas import EvidenceRef, ExplanationDocumentModel
 
 # format -> (renderer, file extension)
 Renderer = Callable[[ExplanationDocumentModel, FileStore], bytes]
@@ -18,6 +18,19 @@ def register(fmt: str, ext: str) -> Callable[[Renderer], Renderer]:
         return fn
 
     return deco
+
+
+def cited(ids: list[str], evidence: dict[str, EvidenceRef]) -> list[EvidenceRef]:
+    """Evidence refs for a block, in order, without repeating the same label/link."""
+    seen: set[tuple[str, str | None]] = set()
+    out: list[EvidenceRef] = []
+    for i in ids:
+        ref = evidence.get(i)
+        if ref is None or (ref.label, ref.url) in seen:
+            continue
+        seen.add((ref.label, ref.url))
+        out.append(ref)
+    return out
 
 
 def available_formats() -> set[str]:

@@ -121,6 +121,15 @@ async def explain_slide(
                 for attr in ("markdown", "text", "steps_markdown"):
                     if isinstance(getattr(b, attr, None), str):
                         setattr(b, attr, strip_filler(getattr(b, attr)))
+    # a diagram block must explain a visual that is really on the slide (models invent empty ones)
+    visual_ids = {str(v.get("id")) for v in ex.get("visuals", []) if v.get("id")}
+    before = len(kept)
+    kept = [
+        b
+        for b in kept
+        if not (b.type == "diagram" and (b.visual_id not in visual_ids or not b.markdown.strip()))
+    ]
+    dropped += before - len(kept)
     for concept, n in plan.refer_back.items():
         if not any(isinstance(b, ReferBackBlock) and b.concept == concept for b in kept):
             kept.append(ReferBackBlock(concept=concept, slide=n))

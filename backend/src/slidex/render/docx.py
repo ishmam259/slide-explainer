@@ -16,7 +16,7 @@ from playwright.sync_api import Page
 
 from slidex.db.files import FileStore
 from slidex.llm.schemas import Block, EvidenceRef, ExplanationDocumentModel
-from slidex.render import register
+from slidex.render import cited, register
 from slidex.render.browser import katex_css_inline, load_with_math, with_page
 from slidex.render.html import LABELS
 
@@ -105,7 +105,7 @@ def _hyperlink(p: Paragraph, url: str, text: str) -> None:
 
 
 def _citations(doc: DocxDocument, ids: list[str], ev: dict[str, EvidenceRef]) -> None:
-    refs = [ev[i] for i in ids if i in ev]
+    refs = cited(ids, ev)
     if not refs:
         return
     p = doc.add_paragraph()

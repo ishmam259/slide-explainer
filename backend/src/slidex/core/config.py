@@ -26,6 +26,7 @@ class Settings(BaseSettings):
         default=None, validation_alias=AliasChoices("OPENAI_API_KEY", "SLIDEX_OPENAI_API_KEY")
     )
     fake_llm: bool = False
+    demo_web: bool = False  # serve the fake search's placeholder pages offline (demo mode only)
 
     model_strong: str = "gpt-5.4-nano"
     model_vision: str = "gpt-5.4-nano"

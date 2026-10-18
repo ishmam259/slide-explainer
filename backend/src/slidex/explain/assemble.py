@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import select
 
 from slidex.api.deps import AppContext
@@ -13,8 +15,10 @@ from slidex.llm.schemas import DocSection, ExplanationDocumentModel, SourceRef
 
 def _section_title(n: int, title: str) -> str:
     """'Slide 4: Consistent hashing' — without repeating 'Slide 4' when that is the title."""
-    clean = title.strip()
-    if not clean or clean.lower() in (f"slide {n}", f"slide {n}:"):
+    # models often prefix or suffix the number themselves: "Slide 4 · Quorums", "Quorums (Slide 4)"
+    clean = re.sub(rf"^\s*slide\s*{n}(?!\d)\s*[:·\-–—|]*\s*", "", title, flags=re.IGNORECASE)
+    clean = re.sub(rf"\s*\(\s*slide\s*{n}\s*\)\s*$", "", clean, flags=re.IGNORECASE).strip()
+    if not clean:
         return f"Slide {n}"
     return f"Slide {n}: {clean}"
 

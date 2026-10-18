@@ -563,6 +563,9 @@ components:
           type: object
           additionalProperties: { type: string }
           description: role → model id
+        demo_mode:
+          type: boolean
+          description: Offline fake model (no API calls, simulated costs)
 
     DeckContext:
       type: object

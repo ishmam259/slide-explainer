@@ -8,15 +8,18 @@ does not pay twice (FR-030).
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 import httpx
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 from slidex.api.deps import AppContext
-from slidex.db.tables import Deck, DeckSource, Slide, Source, Topic, WebSection
+from slidex.db.tables import Deck, DeckSource, FetchCache, Slide, Source, Topic, WebSection
 from slidex.llm.prompts import load, untrusted
 from slidex.llm.schemas import QueryPlan, SourceRanking
 from slidex.research.fetch import FetchBlocked, Fetcher, FetchResult, normalize_url
@@ -38,6 +41,7 @@ OPEN_DOMAINS = (
 BOOK_MIN_PAGES = 80
 KEEP_PER_TOPIC = 5
 MIN_RELEVANCE = 0.4
+FETCH_CACHE_DAYS = 30
 
 Progress = Callable[[int, int], None]
 
@@ -139,7 +143,7 @@ async def ingest_page(
     with ctx.db.session() as s:
         src = s.get(Source, source_id)
         assert src is not None
-        if src.processing_status == "ready":
+        if src.processing_status == "ready" and _cache_fresh(s, normalize_url(url)):
             return src.access == "usable"
         src.processing_status = "fetching"
     try:
@@ -148,6 +152,7 @@ async def ingest_page(
         reason = exc.reason if isinstance(exc, FetchBlocked) else f"fetch failed: {exc!r}"[:300]
         _set_access(ctx, source_id, "blocked", reason, "failed")
         return False
+    _remember_fetch(ctx, url, page)
     if page.paywalled:
         _set_access(ctx, source_id, "further_reading", "paywalled or login required", "ready")
         return False
@@ -196,6 +201,7 @@ async def ingest_page(
         assert src is not None
         src.title = page.title or src.title
         src.access = "usable"
+        src.blocked_reason = None
         src.processing_status = "processing"
     await embed_owners(ctx, "web_section", items, stage="research_fetch_rank", run_id=run_id)
     with ctx.db.session() as s:
@@ -203,6 +209,29 @@ async def ingest_page(
         assert src is not None
         src.processing_status = "ready"
     return True
+
+
+def _cache_fresh(s: Session, url_normalized: str) -> bool:
+    """A ready source is reused while its fetch is under FETCH_CACHE_DAYS old."""
+    row = s.get(FetchCache, url_normalized)
+    if row is None:
+        return True  # ingested before the cache existed: keep it
+    fetched = row.fetched_at if row.fetched_at.tzinfo else row.fetched_at.replace(tzinfo=UTC)
+    return datetime.now(UTC) - fetched < timedelta(days=FETCH_CACHE_DAYS)
+
+
+def _remember_fetch(ctx: AppContext, url: str, page: FetchResult) -> None:
+    with ctx.db.session() as s:
+        s.merge(
+            FetchCache(
+                url_normalized=normalize_url(url),
+                status=page.status,
+                content_type=page.content_type,
+                text_hash=hashlib.sha256(page.text.encode()).hexdigest(),
+                robots_allowed=True,
+                fetched_at=datetime.now(UTC),
+            )
+        )
 
 
 def _set_access(ctx: AppContext, source_id: str, access: str, reason: str, status: str) -> None:

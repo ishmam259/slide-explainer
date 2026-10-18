@@ -7,15 +7,12 @@ import zipfile
 
 from slidex.db.files import FileStore
 from slidex.llm.schemas import Block, DocSection, EvidenceRef, ExplanationDocumentModel
-from slidex.render import register
+from slidex.render import cited, register
 
 
 def _cite(ids: list[str], evidence: dict[str, EvidenceRef]) -> str:
     labels = []
-    for i in ids:
-        ref = evidence.get(i)
-        if ref is None:
-            continue
+    for ref in cited(ids, evidence):
         labels.append(f"[{ref.label}]({ref.url})" if ref.url else ref.label)
     return f" *({'; '.join(labels)})*" if labels else ""
 

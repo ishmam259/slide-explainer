@@ -90,8 +90,22 @@ async def assert_public(url: str) -> None:
 
 class Fetcher:
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
+        from slidex.core.config import get_settings
+
+        settings = get_settings()
+        demo = client is None and settings.demo_web and settings.fake_llm  # never in live mode
+        self._offline_hosts: frozenset[str] = frozenset()
+        transport = None
+        if demo:
+            from slidex import demo_web
+
+            self._offline_hosts = demo_web.HOSTS
+            transport = demo_web.transport()
         self._client = client or httpx.AsyncClient(
-            headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT, follow_redirects=True
+            headers={"User-Agent": USER_AGENT},
+            timeout=TIMEOUT,
+            follow_redirects=True,
+            transport=transport,
         )
         self._robots: dict[str, urllib.robotparser.RobotFileParser] = {}
         self._last: dict[str, float] = {}
@@ -128,7 +142,9 @@ class Fetcher:
 
     async def fetch(self, url: str) -> FetchResult:
         url = normalize_url(url)
-        await assert_public(url)
+        offline = urlsplit(url).hostname in self._offline_hosts  # demo pages: no DNS needed
+        if not offline:
+            await assert_public(url)
         if not await self.robots_allows(url):
             raise FetchBlocked("disallowed by robots.txt")
         host = urlsplit(url).netloc
@@ -149,7 +165,8 @@ class Fetcher:
             return FetchResult(final_url, status, ctype, None, "", False, raw, paywalled=True)
         if status >= 400:
             raise FetchBlocked(f"HTTP {status}")
-        await assert_public(final_url)  # redirects must stay public too
+        if not offline:
+            await assert_public(final_url)  # redirects must stay public too
         if ctype == "application/pdf" or raw[:5] == b"%PDF-":
             return _pdf_result(final_url, status, raw)
         html = raw.decode(resp.encoding or "utf-8", errors="replace")

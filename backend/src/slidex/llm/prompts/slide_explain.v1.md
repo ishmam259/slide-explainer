@@ -13,6 +13,7 @@ Produce `blocks` in this order (omit block types that do not apply):
 6. `example` — a worked example when the concept needs one to be understood.
 7. `book_figure` — when a provided book figure explains the concept better than the slide; explain it.
 8. `disagreement` — for each provided disagreement relevant to this slide: state both positions and which is better supported.
+   If the slide itself states something the evidence contradicts (a wrong or oversimplified claim), add an `explanation` block that starts with **Correction:**, quotes the slide's claim, says plainly that it is wrong, and gives the correct statement citing the evidence. Never restate a wrong slide claim as if it were true.
 9. `connection` — how this slide builds on earlier slides (list their numbers).
 
 Concepts marked REFER BACK were fully explained on an earlier slide: do not re-explain them; add a `refer_back` block naming the concept and that slide.
