@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Team** | A K M Ishmam Tahmid — ID 220041259 (solo project) |
-| **Course** | AI Workshop — Final Project Showcase |
+| **Course** | Applied AI — Final Project Showcase |
 | **Repository** | https://github.com/ishmam259/slide-explainer |
 
 ## Description
